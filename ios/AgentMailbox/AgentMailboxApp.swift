@@ -122,7 +122,7 @@ struct MenuBarCommands: View {
 
 enum MenuBarHat {
     static func image(listening: Bool) -> NSImage {
-        let size = NSSize(width: 18, height: 18)
+        let size = NSSize(width: 24, height: 22)
         let image = NSImage(size: size, flipped: true) { _ in
             guard let context = NSGraphicsContext.current?.cgContext else { return false }
             context.setFillColor(NSColor.black.cgColor)
