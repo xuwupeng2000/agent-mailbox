@@ -3,6 +3,8 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var mailbox: MailboxCenter
 
+    @State private var interruption = ""
+
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
@@ -10,6 +12,27 @@ struct ContentView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 16)
+                DisclosureGroup("发起双 Agent 对话") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("先发言的 Agent", text: $mailbox.agentA).disabled(mailbox.sessionActive)
+                        TextField("另一位 Agent", text: $mailbox.agentB).disabled(mailbox.sessionActive)
+                        TextField("共同任务", text: $mailbox.topic, axis: .vertical).disabled(mailbox.sessionActive)
+                        Stepper("轮数：\(mailbox.rounds)（每轮双方各回复一次）", value: $mailbox.rounds, in: 1...20).disabled(mailbox.sessionActive)
+                        Button("开始新对话") { mailbox.begin() }.disabled(!mailbox.canStart || !mailbox.isListening || mailbox.sessionActive)
+                        Text("\(mailbox.phase) · 已回复 \(mailbox.completedReplies) 次 · 下一位 \(mailbox.expected)")
+                        HStack {
+                            Button("暂停 / 继续") { mailbox.togglePause() }
+                            Button("结束") { mailbox.stop() }
+                        }
+                        TextField("用户补充", text: $interruption)
+                        Button("发送补充") { mailbox.interject(interruption); interruption = "" }
+                        ShareLink("Agent A 接入说明", item: mailbox.instructions(for: mailbox.agentA))
+                        ShareLink("Agent B 接入说明", item: mailbox.instructions(for: mailbox.agentB))
+                        Text("将接入说明交给正在运行的两个 Agent。等待命令表示已接入；不能据此判断 Agent 是否正在思考。")
+                            .font(.caption).foregroundStyle(.secondary)
+                        if !mailbox.notice.isEmpty { Text(mailbox.notice).foregroundStyle(.red) }
+                    }.textFieldStyle(.roundedBorder)
+                }.padding(.horizontal, 16)
                 GeometryReader { proxy in
                     let sideBySide = proxy.size.width > 700
                     let stack = sideBySide ? AnyLayout(HStackLayout(spacing: 12)) : AnyLayout(VStackLayout(spacing: 12))

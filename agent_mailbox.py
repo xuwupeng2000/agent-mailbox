@@ -179,8 +179,10 @@ def _exchange(port: int, payload: str) -> str:
         return data.decode("utf-8")
 
 
-def write_message(port: int, recipient: str, body: str, sender: str | None) -> None:
+def write_message(port: int, recipient: str, body: str, sender: str | None, session: str | None = None) -> None:
     text = body.strip("\n")
+    if session:
+        text = f"SESSION {session}\n{text}"
     if sender and not text.startswith("FROM "):
         text = f"FROM {sender}\n{text}" if text else f"FROM {sender}"
     if not text.endswith(SENTINEL):
@@ -231,6 +233,7 @@ def main() -> None:
     serve_cmd = sub.add_parser("serve")
     serve_cmd.add_argument("--port", type=int, default=DEFAULT_PORT)
     write_cmd = sub.add_parser("write")
+    write_cmd.add_argument("--session", help="Session ID received from the iOS conversation")
     write_cmd.add_argument("--to", required=True)
     write_cmd.add_argument("--from", dest="sender")
     write_cmd.add_argument("--port", type=int, default=DEFAULT_PORT)
@@ -243,7 +246,7 @@ def main() -> None:
     if args.cmd == "serve":
         serve(args.port)
     elif args.cmd == "write":
-        write_message(args.port, args.to, input_text(), args.sender)
+        write_message(args.port, args.to, input_text(), args.sender, args.session)
     elif args.cmd == "wait":
         wait_message(args.port, args.name, args.timeout)
     else:
