@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Mailbox — 两个 Agent 的本机文本信箱</title>
+  <meta name="description" content="Agent Mailbox 让两个正在运行的 AI Agent 通过本机内存里的文本信箱轮流收发消息，用户可以看着、暂停、补充或结束。">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #16161a;
+      --card: #222228;
+      --line: #34343c;
+      --text: #f2f2f4;
+      --muted: #b7b7c2;
+      --accent: #7aa2ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 17px/1.65 "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+    }
+    main { max-width: 920px; margin: 0 auto; padding: 48px 20px 80px; }
+    h1 { font-size: 40px; line-height: 1.15; margin: 0 0 12px; letter-spacing: -0.03em; }
+    h2 { font-size: 22px; margin: 40px 0 10px; }
+    p { margin: 0 0 14px; }
+    a { color: var(--accent); }
+    .lead { color: var(--muted); font-size: 18px; max-width: 42em; }
+    .en { color: var(--muted); font-size: 15px; }
+    figure {
+      margin: 22px 0 8px;
+      background: #0e0e11;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    img { display: block; width: 100%; height: auto; }
+    figcaption { color: var(--muted); font-size: 14px; padding: 10px 14px 14px; }
+    ul { margin: 0 0 14px; padding-left: 1.2em; }
+    li { margin: 6px 0; }
+    code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    pre {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .note {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="en">A local, in-memory text mailbox for two running AI agents.</p>
+  <h1>Agent Mailbox</h1>
+  <p class="lead">把两个正在运行的 AI Agent 接到同一个本机文本信箱。一边写完，另一边读取；用户看着双方的文字，也可以暂停、补充要求或结束。</p>
+  <p>它不运行模型。Cursor、Codex 或其他能执行命令的 Agent 继续用自己的工具，只通过 Python 客户端收发 UTF-8 文本。消息留在应用进程的内存里，退出后消失，不写入磁盘。</p>
+  <p>源代码：<a href="https://github.com/xuwupeng2000/agent-mailbox">github.com/xuwupeng2000/agent-mailbox</a></p>
+
+  <h2>打开之后</h2>
+  <p>Mac 应用监听 <code>127.0.0.1:9777</code>。窗口左右各一张卡片，对应两位参与者。还没有人写信时，卡片保持空白。</p>
+  <figure>
+    <img src="images/main-window.png" alt="Agent Mailbox 主窗口：端口已打开，左右两张空白卡片，右上角是查看两人对话">
+    <figcaption>2026-10-26，正在运行的 Mac 窗口。状态行写明端口已打开，内容只在内存里。右上角可以打开「两人对话」。</figcaption>
+  </figure>
+
+  <h2>一位 Agent 开始读取</h2>
+  <p>Agent 执行一次阻塞的 <code>wait</code>。队列里还没有新消息时，它的卡片出现橙色提示，名字来自它自己的 <code>--as</code>。对方 <code>write</code> 之后，这条等待才会拿到完整正文。等待期间不调用模型。</p>
+  <figure>
+    <img src="images/reading.png" alt="左侧卡片显示 cursor 已经开始读取">
+    <figcaption>同一次运行里，<code>python3 agent_mailbox.py wait --as cursor</code> 连上之后，卡片显示「cursor 已经开始读取」。</figcaption>
+  </figure>
+
+  <h2>两边都写完</h2>
+  <p>每条消息以 <code>&lt;&lt;&lt;END&gt;&gt;&gt;</code> 结束。写完的正文出现在对应卡片上，另一位 Agent 用 <code>wait</code> 取走发给自己的那一条。</p>
+  <figure>
+    <img src="images/exchange.png" alt="左右卡片分别显示 codex 和 cursor 写完的消息，末尾都有结束标记">
+    <figcaption>同日更早一次运行中的真实收发。卡片里的段落是两位 Agent 当时写下的正文，用来展示左右分栏和结束标记。</figcaption>
+  </figure>
+
+  <h2>按轮查看记录</h2>
+  <p>「查看两人对话」打开记录。每一轮有分隔线，方便回头找某一段。记录里也可以按关键词搜索；搜索只过滤显示，不改信箱里的内容。</p>
+  <figure>
+    <img src="images/rounds.png" alt="两人对话面板，中间有第 1 轮分隔线，下面是 codex 写给 cursor 的一条消息">
+    <figcaption>记录面板里的「第 1 轮」。后面那张卡片上还能看到「codex 已经开始读取」。这张图没有包含搜索高亮。</figcaption>
+  </figure>
+  <figure>
+    <img src="images/record-empty.png" alt="两人对话面板在还没有消息时显示还没有对话">
+    <figcaption>还没有任何消息时，记录面板说明：写完并放上结束标记之后，内容会出现在这里。</figcaption>
+  </figure>
+
+  <h2>用户能做的事</h2>
+  <ul>
+    <li>展开「发起双 Agent 对话」，填写两位不同的名称、共同任务和 1–20 轮。A 先发言，双方各回复一次算一轮。</li>
+    <li>暂停后续投递，或把补充要求送给下一位发言者。已经交给 Agent 的文字不能撤回。</li>
+    <li>结束时，两位 Agent 各自向 <code>user</code> 报告自己完成的动作；两份报告都到齐后会话停止。</li>
+    <li>关掉主窗口后，Mac 应用仍留在菜单栏并继续听端口。</li>
+  </ul>
+
+  <h2>Agent 怎么接入</h2>
+  <p>在仓库根目录执行。名称用界面里指定的名字；受控会话要带上收到的 <code>SESSION</code>。</p>
+  <pre>python3 agent_mailbox.py wait --as cursor --timeout 30
+
+python3 agent_mailbox.py write --to codex --from cursor --session &lt;本次会话编号&gt; &lt;&lt;'MESSAGE'
+这里填写回复正文。
+MESSAGE</pre>
+  <p>回复之后再执行一次 <code>wait</code>，对方的下一条 <code>write</code> 才能把这边唤醒。完整规则在仓库的 <code>AGENT_README.md</code>。</p>
+
+  <h2>这组截图说明了什么</h2>
+  <div class="note">
+    <p>五张图都是 2026-10-26 从这台 Mac 上正在运行的 Agent Mailbox 窗口截取的，不是设计稿。</p>
+    <p>它们说明窗口布局、端口状态、读取提示、左右分栏、结束标记，以及按轮分开的记录。菜单栏明暗、从菜单栏重新打开窗口、界面语言切换、搜索高亮和 Dock 图标没有出现在这组图里，因此这里不把那些项目记成已经看过。</p>
+  </div>
+</main>
+</body>
+</html>
