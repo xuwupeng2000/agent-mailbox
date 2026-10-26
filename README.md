@@ -1,165 +1,120 @@
 # Agent Mailbox
 
-让用户把两个正在运行的 AI Agent 接到同一个文本信箱中，围绕一个任务轮流交流，并随时暂停、补充要求或结束。
+简体中文 · [English](README.en.md) · [项目展示 / GitHub Pages](https://xuwupeng2000.github.io/agent-mailbox/)
 
-软件由 **Python 命令行工具**和 **SwiftUI iOS 应用**组成。消息和对话记录保存在进程内存中，退出后丢失，不主动写入文件。
+一个双击就能打开的 Mac 应用：把两个正在运行的 AI Agent 接到同一个本机文本信箱，围绕用户分发的任务轮流交流。用户可以查看历史、暂停、补充要求或结束讨论。
 
-## 为什么创建它
+**应用和 Agent 接入工具均为原生 Swift，统一放在一个 `.app` 内。普通使用无需 Python、pip、终端配置或仓库副本。** 软件不附带模型，不自动启动 Cursor 或 Codex。
 
-两个 Agent 分别运行在不同的工具里时，通常需要用户来回复制文字：把 A 的建议交给 B，再把 B 的回复交给 A。这个过程重复、容易遗漏，也不方便控制讨论何时停止。
+## 环境要求
 
-Agent Mailbox 提供一个共同的文本收发入口。Agent 通过 `wait` 读取消息，通过 `write` 回复；用户通过界面设置任务、观察双方内容、控制轮次和插话。目标是先验证两个 Agent 能否在用户掌控下完成一段有限的讨论。
-
-它是独立软件，不依赖 splitfire 游戏或 Unity。
-
-## 当前功能
-
-- **文本信箱**：按收件人排队，通过 TCP 读写 UTF-8 文本。
-- **双人显示**：显示前两位发言者的最新文字，以打字效果呈现。
-- **对话记录**：查看双方已提交内容，显示未读数量；帽子图标表示监听状态。
-- **发起任务**：设置两个不同的 Agent 名称、共同任务和 1–20 轮讨论；A 先发言，一轮表示双方各回复一次。
-- **轮流交流**：校验发言者、收件人、会话编号和顺序；达到轮数后结束。
-- **暂停和继续**：暂停后停止后续消息投递；已经交给 Agent 的内容无法撤回，其回复可暂存等待继续。
-- **用户补充**：把要求送到下一位发言者的信箱；已经被 Agent 读取的内容不会被替换。
-- **结束和重开**：结束时清理待投递内容并释放等待者；新会话使用新编号。
-- **接入说明**：分别分享给两位 Agent，说明读取、回复和停止规则。
-
-## 当前依赖
-
-| 部分 | 依赖 | 说明 |
-| --- | --- | --- |
-| 命令行客户端 / 基础服务端 | Python 3.10+ | 仅使用标准库，无需 `pip install` |
-| iOS 应用开发 | macOS、完整 Xcode、iOS Simulator runtime | 当前在 Xcode 27.0 / iOS 27.0 模拟器上构建运行过；尚未验证最低可用 Xcode 版本 |
-| iOS 应用运行 | iOS 18.0+ | 工程部署目标；目前以同一台 Mac 上的模拟器为主要运行方式 |
-| Apple 框架 | SwiftUI、Foundation、Combine、Network | 随 Apple SDK 提供，无第三方 Swift 包 |
-| 参与对话的 Agent | 两个能执行命令或使用 TCP 的运行中 Agent | 由用户另行提供；不附带模型或模型运行环境 |
-| 本机通信 | TCP，默认端口 9777 | 命令行默认连接 `127.0.0.1`；必须能连接到运行中的信箱 |
-
-没有数据库、Node.js、Docker、云端后端或内置模型 API 依赖。Git / GitHub Desktop 用于版本管理，不是软件运行依赖。Agent 本身可能需要账号、API 或网络，这些由各自工具决定。
-
-## 快速开始：带界面的双 Agent 对话
-
-1. 用 Xcode 打开 `ios/AgentMailbox.xcodeproj`，选择 iOS 模拟器，运行 **AgentMailbox**。
-2. 展开「发起双 Agent 对话」，填写两个不同的名称、任务和轮数。名称支持英文字母、数字、下划线和连字符。
-3. 将 A / B 接入说明分别交给两个正在运行的 Agent，并告知本仓库的本地路径。
-4. 点击「开始新对话」。双方依次读取、思考、回复，再继续等待。
-5. 需要时暂停、发送补充或结束；帽子菜单里的「查看两人对话」可查看记录。
-
-在仓库根目录执行读取命令：
-
-```bash
-python3 agent_mailbox.py wait --as codex --timeout 30
-```
-
-收到的消息类似：
-
-```text
-FROM user
-SESSION <本次会话编号>
-共同任务：讨论这个方案
-...
-<<<END>>>
-```
-
-回复时带上相同的会话编号，收件人使用另一位 Agent 的名称：
-
-```bash
-python3 agent_mailbox.py write --to cursor --from codex --session <本次会话编号> <<'MESSAGE'
-这里填写回复正文。
-MESSAGE
-```
-
-将示例中的 `<本次会话编号>` 整体替换为实际值再执行。命令自动添加消息结束标记。回复后继续执行 `wait`。
-
-## 只使用基础信箱
-
-不需要界面或轮次控制时，可以运行 Python 服务端：
-
-```bash
-python3 agent_mailbox.py serve
-```
-
-另一个终端发送：
-
-```bash
-python3 agent_mailbox.py write --to cursor --from codex <<'MESSAGE'
-请阅读这个方案并指出问题。
-MESSAGE
-```
-
-接收：
-
-```bash
-python3 agent_mailbox.py wait --as cursor --timeout 30
-```
-
-Python `serve` 仅提供基础队列，不提供 iOS 版本的会话校验、轮数限制和用户控制。iOS 应用已经监听时不要同时启动 `serve`，同一端口只能由一个服务监听。Python 子命令支持 `--port` 指定端口。
-
-## 协议约定
-
-一次 TCP 连接处理一个请求。基础发送格式：
-
-```text
-WRITE cursor
-FROM codex
-正文
-<<<END>>>
-```
-
-会话模式在 `FROM` 之后加一行 `SESSION <编号>`。基础信箱允许省略 `FROM`，受控会话要求双方署名和正确的会话编号。
-
-读取请求是 `WAIT cursor` 或 `WAIT cursor 30`；发送成功返回 `OK`，`PING` 返回 `PONG`。
-
-| 返回内容 | Agent 应如何处理 |
+| 场景 | 要求 |
 | --- | --- |
-| `<<<END>>>` | 完整消息结束，阅读上面的正文 |
-| `<<<TIMEOUT>>>` | 此次等待没有消息，继续等待，不把它当作对方发言 |
-| `<<<STOP>>>` | 会话已结束，停止本次读写循环 |
-| `ERR ...` | 请求没有被接收，保留正文并检查错误原因 |
+| 使用已打包应用 | macOS 14+；当前本机构建包为 Apple Silicon（arm64）版本 |
+| Agent 协作 | 两个已运行、允许执行本机命令的 Agent，例如 Cursor 与 Codex；将应用生成的接入说明分别交给它们 |
+| 本机通信 | 默认 `127.0.0.1:9777` 可用；只运行一个信箱应用 |
+| 从源码构建 | macOS 14+、完整 Xcode（已在 Xcode 27.0 验证）、Swift 工具链和 macOS SDK；构建机架构决定产物架构 |
+| 可选 iOS 开发 | 完整 Xcode、iOS 模拟器 runtime；部署目标 iOS 18+。不属于 Mac 双击使用流程 |
 
-不要在正文中使用 `<<<END>>>`。会话中不要伪造其他参与者或修改 SESSION 行。
+运行应用和原生接入工具都不需要安装 Python、Node.js、Docker、数据库或模型 API。Swift / Xcode 只用于从源码构建。Agent 自身的账号、模型和网络由各自软件提供。
 
-## 当前边界和限制
+## 使用：双击运行
 
-- 信箱负责传文字，不启动模型，不唤醒已停止的 Agent，也不保证 Agent 持续执行等待命令。
-- 没有自动发现 Agent、模型 API 适配器或真实“思考中”检测；填写名称不等于对方已连接。
-- 会话控制当前在 iOS 应用中，Python 服务端尚未实现同等控制。
-- 面向同一台 Mac 的模拟器使用；实体 iPhone 不能通过 Mac 的 `127.0.0.1` 接入。
-- 协议没有认证和加密；SESSION 用于隔离会话，不是身份凭证。iOS 监听器没有显式限制到回环接口，不应把它当作安全的公网服务。
-- 消息不持久化；应用退出、重启或开始新会话会丢失相关内存内容。持续运行时没有历史记录容量限制。
-- Agent 消息是对方提供的文本，不应自动视为用户授予的执行权限。
+1. 将已有的 `Agent Mailbox.app` 放入「应用程序」或你选定的文件夹，双击打开。确认界面显示端口已打开。
+2. 展开「发起双 Agent 对话」，填写两位不同的名称（例如 `codex`、`cursor`）、共同任务和 1–20 轮讨论。
+3. 将界面生成的 A / B 接入说明分别发给两个已经运行的 Agent。说明包含本应用内收发工具的完整路径，无需用户手动输入收发命令。
+4. 点击「开始新对话」，查看双方消息；从帽子菜单打开历史记录并搜索。
+5. 按需暂停、继续、补充或结束。结束时双方各自向用户报告完成的 actions；再次结束可跳过报告。
+
+仅在用户明确分发协作任务时使用信箱。日常用户聊天留在原聊天窗口，不自动转发。移动应用后重新生成接入说明，以更新工具路径。
+
+## 从源码构建并运行
+
+在仓库根目录执行：
+
+```bash
+bash scripts/build-macos.sh
+open "dist/Agent Mailbox.app"
+```
+
+脚本使用 Swift 工具链构建应用和原生收发工具，并生成：
+
+- `dist/Agent Mailbox.app`：可双击运行的完整应用。
+- `dist/Agent-Mailbox-macOS.zip`：可复制到兼容 Mac 的应用包。
+- `dist/SHA256SUMS.txt`：压缩包校验值。
+
+若 Xcode 选择错误，先执行 `export DEVELOPER_DIR="/你的/Xcode.app/Contents/Developer"`。打包直接使用仓库的 `.icns` 图标，不需要 Python 生成图标。当前签名是本机临时签名，尚未公证；这不是已完成 Apple 公证的公开发行包。
+
+## 原理与沟通机制
+
+应用同时提供 SwiftUI 窗口、菜单栏入口、内存队列和会话控制。原生 `mailbox` 工具通过本机 TCP 发送 UTF-8 文本。Agent 仍使用各自的模型，只把协作文字交给信箱。
+
+```mermaid
+sequenceDiagram
+    actor U as 用户
+    participant M as Agent Mailbox（内存队列 / 会话控制）
+    participant A as Agent A（codex）
+    participant B as Agent B（cursor）
+    U->>M: 设置任务、参与者、轮数，开始
+    A->>M: WAIT codex（无消息则阻塞）
+    M-->>A: FROM user + SESSION + 任务
+    Note over A: 使用自己的模型处理任务
+    A->>M: WRITE cursor / FROM codex / SESSION / 正文
+    A->>M: WAIT codex（等待下次发言）
+    B->>M: WAIT cursor
+    M-->>B: 投递 A 的完整消息
+    Note over B: 使用自己的模型处理任务
+    B->>M: WRITE codex / FROM cursor / SESSION / 正文
+    Note over M: 双方各回复一次 = 一轮；未达上限则继续
+    U->>M: 可暂停、继续、补充要求或结束
+    M-->>A: 轮数用完或结束：请求 actions 报告
+    M-->>B: 请求 actions 报告
+    A->>M: WRITE user / 自己完成的 actions
+    B->>M: WRITE user / 自己完成的 actions
+    M-->>A: 后续 WAIT 返回 STOP
+    M-->>B: 后续 WAIT 返回 STOP
+```
+
+`write` 提交完整消息，`wait` 阻塞等待属于自己的消息；无消息时不轮询、不调用模型。等待本身不产生模型 token，实际读取和回复仍由各 Agent 平台计费。填写名字不会自动连接或唤醒已经停止的 Agent。
+
+会话校验发言者、收件人、顺序和 `SESSION`；A 先发言，双方各回复一次为一轮。暂停阻止后续投递，无法撤回已读取的消息。轮数用完或用户结束时进入 actions 报告阶段，双方报告完成后停止。
+
+消息和历史只保存在内存中，退出应用后丢失；关闭 Mac 主窗口则继续留在菜单栏。界面逐段打字属于显示效果，“已经开始读取”表示有等待连接，不代表模型正在思考。
+
+## Agent 接入（由 Agent 执行）
+
+优先使用界面生成的接入说明，以及 [AGENT_README.md](AGENT_README.md)。应用内工具位于 `Agent Mailbox.app/Contents/MacOS/mailbox`，规则在 `Contents/Resources/AGENT_README.md`。
+
+例如应用安装在「应用程序」时，Agent 可以在任意工作目录执行：
+
+```bash
+"/Applications/Agent Mailbox.app/Contents/MacOS/mailbox" wait --as codex --timeout 30
+```
+
+这不是用户启动软件的步骤。用户只需打开应用、分发任务与接入说明。原生客户端支持 `wait`、`write`、`ping` 和 `--help`，不需要 Python 解释器；回复自动追加 `<<<END>>>`，受控会话必须保留收到的 SESSION。
+
+## 当前边界
+
+- Mac 监听只绑定回环地址；无认证或加密，SESSION 不是身份凭证。
+- 不内置模型，不自动接管或唤醒已有聊天。
+- iOS 工程保留作开发用途；实体 iPhone 无法通过 Mac 的 `127.0.0.1` 接入，iOS 监听尚未显式限制为回环地址。
+- `agent_mailbox.py` 留作旧版开发兼容工具，不随新 Mac 应用打包，不是用户运行依赖。可选 Python 开发测试及重新生成图标需要相应开发环境，不影响构建和正常使用。
+- 页面中的历史截图可能包含旧版 Python 命令，只展示当时界面；当前接入以应用生成的原生工具说明为准。
 
 ## 项目结构
 
 ```text
-agent_mailbox.py             Python 客户端和基础服务端
-ios/AgentMailbox/           SwiftUI 界面及信箱、会话控制
-ios/AgentMailbox.xcodeproj/ Xcode 工程
-tests/SessionChecks.swift   会话状态检查
+Package.swift                  Swift 应用与原生客户端构建配置
+cli/main.swift                 原生收发工具（无需 Python）
+ios/AgentMailbox/              共享 SwiftUI 界面、信箱、会话和多语言文案
+AGENT_README.md                 给参与协作的 Agent 的规则
+macos/                         图标资源
+scripts/build-macos.sh         构建、打包和本机签名
+docs/index.html / en.html       中英文 GitHub Pages
 ```
 
-## 验证记录与已知待验证项
+## 验证记录
 
-2026-10-26 已实际执行：
+2026-10-26 本轮实际验证：Mac release 构建、应用签名校验，以及原生客户端协议测试（中文与 emoji、分片响应、SESSION 传递、阻塞投递、超时、STOP、服务端拒绝、截断消息、非法输入和空 PATH 启动）。新增协议检查由开发用 Python 测试夹具驱动，产品运行不使用 Python。
 
-- Python TCP 收发 `demo` 通过。
-- Swift 会话状态检查通过：名称校验、开始、阻止重复开始、暂停/继续、结束、重新开始。
-- iOS 模拟器构建、安装、启动通过，Mac 连接端口 `PING` 检查通过。
-
-**尚未验证**：通过界面操作后的完整轮次投递、两个真实 Agent 的自动多轮交流、人工视觉验收。构建成功不代表这些流程已经通过。
-
-复现基础检查：
-
-```bash
-python3 agent_mailbox.py demo
-```
-
-本机完整 Xcode 安装在 `/Applications/Xcode-27.0.0.app`，状态检查可执行：
-
-```bash
-export DEVELOPER_DIR=/Applications/Xcode-27.0.0.app/Contents/Developer
-xcrun swiftc ios/AgentMailbox/MailboxCenter.swift tests/SessionChecks.swift -o /tmp/mailbox-session-checks
-/tmp/mailbox-session-checks
-```
-
-其他机器请使用实际的 Xcode 安装路径。
+既有 Swift 会话检查及三种语言的原生接入说明检查本轮重新执行通过。历史窗口宽度 1024 已在上一轮运行检查。菜单栏明暗切换、所有语言切换的视觉效果和完整真实 Agent 多轮会话仍未全部验收；构建成功不等于这些项目通过。

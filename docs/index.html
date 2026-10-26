@@ -67,11 +67,32 @@
 </head>
 <body>
 <main>
+  <nav aria-label="Language">简体中文 · <a href="en.html" lang="en">English</a> · <a href="https://github.com/xuwupeng2000/agent-mailbox">GitHub</a></nav>
   <p class="en">A local, in-memory text mailbox for two running AI agents.</p>
   <h1>Agent Mailbox</h1>
   <p class="lead">把两个正在运行的 AI Agent 接到同一个本机文本信箱。一边写完，另一边读取；用户看着双方的文字，也可以暂停、补充要求或结束。</p>
-  <p>它不运行模型。Cursor、Codex 或其他能执行命令的 Agent 继续用自己的工具，只通过 Python 客户端收发 UTF-8 文本。消息留在应用进程的内存里，退出后消失，不写入磁盘。</p>
+  <p>它不运行模型。Cursor、Codex 或其他能执行命令的 Agent 继续用自己的工具，通过应用自带的原生收发工具传递 UTF-8 文本，无需安装 Python。消息留在应用进程的内存里，退出后消失，不写入磁盘。</p>
   <p>源代码：<a href="https://github.com/xuwupeng2000/agent-mailbox">github.com/xuwupeng2000/agent-mailbox</a></p>
+
+  <h2>双击运行，无需 Python</h2>
+  <p>Agent Mailbox 是完整的 Mac 应用。打开 <code>Agent Mailbox.app</code>，填写任务，将界面生成的接入说明分别交给两个 Agent，再开始对话。收发工具已随应用打包，不需要用户手动运行脚本。</p>
+  <ol>
+    <li>双击应用，确认端口已打开。</li>
+    <li>填写参与者名称、共同任务和轮数。</li>
+    <li>把两份接入说明分别发给正在运行的 Agent，点击开始。</li>
+    <li>从帽子菜单查看记录，按需暂停、补充或结束。</li>
+  </ol>
+  <h2>从源码构建并运行</h2>
+  <pre>bash scripts/build-macos.sh
+open "dist/Agent Mailbox.app"</pre>
+  <p>生成的应用和原生收发工具放在同一个 <code>.app</code> 中，压缩包在 <code>dist/Agent-Mailbox-macOS.zip</code>。当前为本机临时签名，尚未经过 Apple 公证。</p>
+  <h2>环境要求</h2>
+  <ul>
+    <li>使用：macOS 14+；当前本机构建包适用于 Apple Silicon（arm64）。</li>
+    <li>协作：两个正在运行且允许执行本机命令的 Agent；默认端口 <code>127.0.0.1:9777</code> 可用。</li>
+    <li>构建：完整 Xcode、Swift 工具链和 macOS SDK；已在 Xcode 27.0 验证。普通用户无需安装这些工具。</li>
+    <li>运行与构建均不需要 Python、pip、Node.js、Docker 或数据库。Agent 自身的模型、账号和网络由各自软件提供。</li>
+  </ul>
 
   <h2>程序坞和菜单栏</h2>
   <p>Mac 应用放在程序坞里，运行时菜单栏也有一枚帽子标记。下面两张是 2026-10-26 从这台 Mac 的实际界面截取的，不是图标源文件。</p>
@@ -97,7 +118,7 @@
   <p>Agent 执行一次阻塞的 <code>wait</code>。队列里还没有新消息时，它的卡片出现橙色提示，名字来自它自己的 <code>--as</code>。对方 <code>write</code> 之后，这条等待才会拿到完整正文。等待期间不调用模型。</p>
   <figure>
     <img src="images/reading.png" alt="左侧卡片显示 cursor 已经开始读取">
-    <figcaption>同一次运行里，<code>python3 agent_mailbox.py wait --as cursor</code> 连上之后，卡片显示「cursor 已经开始读取」。</figcaption>
+    <figcaption>同一次运行里，旧版客户端的等待命令 连上之后，卡片显示「cursor 已经开始读取」。</figcaption>
   </figure>
 
   <h2>两边都写完</h2>
@@ -127,16 +148,16 @@
   </ul>
 
   <h2>Agent 怎么接入</h2>
-  <p>在仓库根目录执行。名称用界面里指定的名字；受控会话要带上收到的 <code>SESSION</code>。</p>
-  <pre>python3 agent_mailbox.py wait --as cursor --timeout 30
-
-python3 agent_mailbox.py write --to codex --from cursor --session &lt;本次会话编号&gt; &lt;&lt;'MESSAGE'
-这里填写回复正文。
-MESSAGE</pre>
-  <p>回复之后再执行一次 <code>wait</code>，对方的下一条 <code>write</code> 才能把这边唤醒。完整规则在仓库的 <code>AGENT_README.md</code>。</p>
+  <p>用户只需分享界面生成的接入说明。说明会包含当前应用内原生工具的完整路径，Agent 可从任意目录执行，无需 Python 或仓库副本。移动应用后请重新生成说明。</p>
+  <pre>"/Applications/Agent Mailbox.app/Contents/MacOS/mailbox" wait --as cursor --timeout 30</pre>
+  <p>这条命令由 Agent 执行，不是用户启动应用的步骤。受控会话回复保留收到的 <code>SESSION</code>；完整规则在应用内的 <code>Contents/Resources/AGENT_README.md</code>。普通聊天留在原聊天窗口，只把用户明确分发的协作任务送入信箱。</p>
+  <h2>沟通路径</h2>
+  <p>用户分发任务 → 应用内存队列 → Agent A 读取并回复 → 应用校验会话与轮次 → Agent B 读取并回复 → 达到轮数后双方报告 actions。</p>
+  <p>等待连接本身不调用模型；读取与生成回复仍由各 Agent 平台计费。软件不会自动启动模型或唤醒已停止的聊天。</p>
 
   <h2>这组截图说明了什么</h2>
   <div class="note">
+    <p>这组是历史截图，其中可能出现旧版 Python 接入文字；当前使用上面的原生工具和应用生成的接入说明。</p>
     <p>窗口、程序坞和菜单栏都是 2026-10-26 从这台 Mac 上正在运行的 Agent Mailbox 截取的，不是设计稿。</p>
     <p>这些图说明窗口布局、端口状态、读取提示、左右分栏、结束标记、按轮分开的记录，以及当时程序坞和菜单栏上的法师帽。从菜单栏重新打开窗口、切换菜单栏明暗、切换界面语言和搜索高亮没有出现在这组图里，因此这里不把那些项目记成已经看过。</p>
   </div>

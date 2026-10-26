@@ -2,35 +2,60 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var mailbox: MailboxCenter
+    @EnvironmentObject private var language: LanguageStore
 
     @State private var interruption = ""
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
-                Text(mailbox.status)
+                Text(L10n.status(mailbox.listenState, language.current, port: MailboxCenter.port))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 16)
-                DisclosureGroup("发起双 Agent 对话") {
+                DisclosureGroup(language.text(.startSection)) {
                     VStack(alignment: .leading, spacing: 8) {
-                        TextField("先发言的 Agent", text: $mailbox.agentA).disabled(mailbox.sessionActive)
-                        TextField("另一位 Agent", text: $mailbox.agentB).disabled(mailbox.sessionActive)
-                        TextField("共同任务", text: $mailbox.topic, axis: .vertical).disabled(mailbox.sessionActive)
-                        Stepper("轮数：\(mailbox.rounds)（每轮双方各回复一次）", value: $mailbox.rounds, in: 1...20).disabled(mailbox.sessionActive)
-                        Button("开始新对话") { mailbox.begin() }.disabled(!mailbox.canStart || !mailbox.isListening || mailbox.sessionActive)
-                        Text("\(mailbox.phase) · 已回复 \(mailbox.completedReplies) 次 · 下一位 \(mailbox.expected)")
-                        HStack {
-                            Button("暂停 / 继续") { mailbox.togglePause() }
-                            Button("结束") { mailbox.stop() }
+                        TextField(language.text(.firstAgent), text: $mailbox.agentA).disabled(mailbox.sessionActive)
+                        TextField(language.text(.otherAgent), text: $mailbox.agentB).disabled(mailbox.sessionActive)
+                        TextField(language.text(.sharedTask), text: $mailbox.topic, axis: .vertical).disabled(mailbox.sessionActive)
+                        Stepper(value: $mailbox.rounds, in: 1...20) {
+                            Text(L10n.rounds(mailbox.rounds, language.current))
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        TextField("用户补充", text: $interruption)
-                        Button("发送补充") { mailbox.interject(interruption); interruption = "" }
-                        ShareLink("Agent A 接入说明", item: mailbox.instructions(for: mailbox.agentA))
-                        ShareLink("Agent B 接入说明", item: mailbox.instructions(for: mailbox.agentB))
-                        Text("将接入说明交给正在运行的两个 Agent。等待命令表示已接入；不能据此判断 Agent 是否正在思考。")
-                            .font(.caption).foregroundStyle(.secondary)
-                        if !mailbox.notice.isEmpty { Text(mailbox.notice).foregroundStyle(.red) }
+                        .disabled(mailbox.sessionActive)
+                        Button(language.text(.startNew)) { mailbox.begin(language: language.current) }
+                            .disabled(!mailbox.canStart || !mailbox.isListening || mailbox.sessionActive)
+                        Text(progressLine)
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack {
+                            Button(mailbox.phase == .paused ? language.text(.resume) : language.text(.pause)) { mailbox.togglePause() }
+                                .disabled(!mailbox.sessionActive || mailbox.phase == .reporting)
+                            Button(mailbox.phase == .reporting ? language.text(.skipReports) : language.text(.endSession)) { mailbox.endSession() }
+                                .disabled(!mailbox.sessionActive)
+                        }
+                        TextField(language.text(.userNote), text: $interruption)
+                        Button(language.text(.sendNote)) {
+                            mailbox.interject(interruption, language: language.current)
+                            interruption = ""
+                        }
+                        ShareLink(L10n.instructionsTitle(mailbox.agentA, language.current), item: mailbox.instructions(for: mailbox.agentA, language: language.current))
+                        ShareLink(L10n.instructionsTitle(mailbox.agentB, language.current), item: mailbox.instructions(for: mailbox.agentB, language: language.current))
+                        Text(language.text(.instructionsHint))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        languagePicker
+                        Text(language.text(.languageNote))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        let notice = L10n.notice(mailbox.notice, language.current)
+                        if !notice.isEmpty {
+                            Text(notice)
+                                .foregroundStyle(.red)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }.textFieldStyle(.roundedBorder)
                 }.padding(.horizontal, 16)
                 GeometryReader { proxy in
@@ -45,26 +70,47 @@ struct ContentView: View {
                     .padding(.bottom, 16)
                 }
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("两个智能体")
+            .background(Color.mailboxBackground)
+            .navigationTitle(language.text(.appTitle))
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Button("查看两人对话") {
+                        Button(language.text(.viewConversation)) {
                             mailbox.conversationOpen = true
                             mailbox.markConversationRead()
                         }
                     } label: {
                         conversationLabel
                     }
-                    .accessibilityLabel(mailbox.unread > 0 ? "对话，\(mailbox.unread) 条新内容" : "对话")
+                    .accessibilityLabel(L10n.unreadLabel(count: mailbox.unread, language: language.current))
                 }
             }
             .sheet(isPresented: conversationBinding) {
                 ConversationSheet()
                     .environmentObject(mailbox)
+                    .environmentObject(language)
+                    #if os(macOS)
+                    .frame(width: 1024, height: 680)
+                    #endif
             }
         }
+    }
+
+    private var progressLine: String {
+        if mailbox.phase == .reporting {
+            return L10n.reportingStatus(mailbox.pendingReports, language.current)
+        }
+        return L10n.progress(phase: mailbox.phase, replies: mailbox.completedReplies, next: mailbox.expected, language: language.current)
+    }
+
+    private var languagePicker: some View {
+        Picker(language.text(.language), selection: $language.current) {
+            ForEach(AppLanguage.allCases) { item in
+                Text(item.nativeName).tag(item)
+            }
+        }
+        .pickerStyle(.menu)
+        .accessibilityLabel(language.text(.language))
     }
 
     private var conversationBinding: Binding<Bool> {
@@ -79,16 +125,15 @@ struct ContentView: View {
         )
     }
 
+    private var menuImage: some View {
+        WizardHatMark()
+            .fill(mailbox.isListening ? Color.primary : Color.primary.opacity(0.35), style: FillStyle(eoFill: true))
+    }
+
     private var conversationLabel: some View {
         ZStack(alignment: .topTrailing) {
-            Image("FedoraIndicator")
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
+            menuImage
                 .frame(width: 28, height: 18)
-                .foregroundStyle(mailbox.isListening ? Color.black : Color.white)
-                .padding(mailbox.isListening ? 0 : 6)
-                .background(mailbox.isListening ? Color.clear : Color.black, in: Circle())
             if mailbox.unread > 0 {
                 Text(mailbox.unread > 9 ? "9+" : "\(mailbox.unread)")
                     .font(.caption2.weight(.bold))
@@ -103,27 +148,74 @@ struct ContentView: View {
     }
 
     private var slots: [TypingSlot] {
-        if mailbox.order.isEmpty {
+        let names = visibleNames
+        if names.isEmpty {
             return [
-                TypingSlot(title: "等待第一位", text: "还没有人写字。", filled: false),
-                TypingSlot(title: "等待第二位", text: "还没有人写字。", filled: false)
+                TypingSlot(id: 0, title: language.text(.waitingFirst), text: language.text(.nobodyWrote), filled: false, readingText: ""),
+                TypingSlot(id: 1, title: language.text(.waitingSecond), text: language.text(.nobodyWrote), filled: false, readingText: "")
             ]
         }
-        var result = mailbox.order.prefix(2).map { name in
-            TypingSlot(title: name, text: mailbox.panels[name] ?? "", filled: true)
+        var result = names.prefix(2).enumerated().map { index, name in
+            let panel = mailbox.panels[name] ?? ""
+            let isReading = mailbox.reading.contains(name)
+            let wrote = mailbox.order.contains(name)
+            return TypingSlot(
+                id: index,
+                title: L10n.displayName(name, language.current),
+                text: panel.isEmpty && !isReading && !wrote ? language.text(.nobodyWrote) : panel,
+                filled: wrote,
+                readingText: isReading ? L10n.readingStatus(name, language.current) : ""
+            )
         }
         if result.count == 1 {
-            result.append(TypingSlot(title: "等待第二位", text: "还没有人写字。", filled: false))
+            result.append(TypingSlot(id: 1, title: language.text(.waitingSecond), text: language.text(.nobodyWrote), filled: false, readingText: ""))
         }
         return result
+    }
+
+    private var visibleNames: [String] {
+        if mailbox.sessionActive {
+            return [mailbox.agentA, mailbox.agentB]
+        }
+        var names = mailbox.order
+        for name in mailbox.reading where !names.contains(name) {
+            names.append(name)
+        }
+        return names
+    }
+}
+
+/// Shared silhouette for the window menu and the macOS menu bar.
+struct WizardHatMark: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: 24, y: 71))
+        path.addCurve(to: CGPoint(x: 48, y: 13), control1: CGPoint(x: 35, y: 49), control2: CGPoint(x: 31, y: 22))
+        path.addCurve(to: CGPoint(x: 79, y: 10), control1: CGPoint(x: 59, y: 4), control2: CGPoint(x: 72, y: 3))
+        path.addCurve(to: CGPoint(x: 88, y: 34), control1: CGPoint(x: 86, y: 17), control2: CGPoint(x: 89, y: 27))
+        path.addCurve(to: CGPoint(x: 72, y: 24), control1: CGPoint(x: 83, y: 33), control2: CGPoint(x: 79, y: 19))
+        path.addCurve(to: CGPoint(x: 69, y: 48), control1: CGPoint(x: 62, y: 25), control2: CGPoint(x: 65, y: 39))
+        path.addLine(to: CGPoint(x: 82, y: 73))
+        path.addCurve(to: CGPoint(x: 98, y: 85), control1: CGPoint(x: 93, y: 76), control2: CGPoint(x: 98, y: 80))
+        path.addCurve(to: CGPoint(x: 3, y: 85), control1: CGPoint(x: 96, y: 100), control2: CGPoint(x: 4, y: 100))
+        path.addCurve(to: CGPoint(x: 24, y: 71), control1: CGPoint(x: 0, y: 79), control2: CGPoint(x: 13, y: 73))
+        path.closeSubpath()
+        // A simple four-point star remains readable at menu-bar sizes.
+        path.move(to: CGPoint(x: 57, y: 48))
+        path.addLines([CGPoint(x: 60, y: 56), CGPoint(x: 67, y: 59), CGPoint(x: 60, y: 62), CGPoint(x: 57, y: 70), CGPoint(x: 54, y: 62), CGPoint(x: 47, y: 59), CGPoint(x: 54, y: 56)])
+        path.closeSubpath()
+        let side = min(rect.width, rect.height)
+        return path.applying(CGAffineTransform(scaleX: side / 100, y: side / 100)
+            .concatenating(CGAffineTransform(translationX: rect.midX - side / 2, y: rect.midY - side / 2)))
     }
 }
 
 private struct TypingSlot: Identifiable {
+    var id: Int
     var title: String
     var text: String
     var filled: Bool
-    var id: String { title }
+    var readingText: String
 }
 
 private struct TypingCard: View {
@@ -133,11 +225,18 @@ private struct TypingCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Circle()
-                    .fill(slot.filled ? Color.green : Color.secondary.opacity(0.4))
+                    .fill(slot.readingText.isEmpty ? (slot.filled ? Color.green : Color.secondary.opacity(0.4)) : Color.orange)
                     .frame(width: 8, height: 8)
                 Text(slot.title)
                     .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer()
+            }
+            if !slot.readingText.isEmpty {
+                Text(slot.readingText)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             ScrollView {
                 Text(slot.text.isEmpty ? " " : slot.text)
@@ -148,45 +247,161 @@ private struct TypingCard: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color.mailboxCard, in: RoundedRectangle(cornerRadius: 16))
     }
 }
 
 struct ConversationSheet: View {
     @EnvironmentObject private var mailbox: MailboxCenter
+    @EnvironmentObject private var language: LanguageStore
     @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
 
     var body: some View {
         NavigationStack {
             Group {
                 if mailbox.turns.isEmpty {
-                    ContentUnavailableView("还没有对话", systemImage: "bubble.left.and.bubble.right", description: Text("一位智能体写完并放上 <<<END>>> 之后，会出现在这里。"))
+                    ContentUnavailableView(
+                        language.text(.noConversation),
+                        systemImage: "bubble.left.and.bubble.right",
+                        description: Text(language.text(.noConversationDetail))
+                    )
+                } else if roundGroups.isEmpty && reportTurns.isEmpty && !showReportPlaceholder {
+                    ContentUnavailableView(
+                        language.text(.noMatches),
+                        systemImage: "magnifyingglass",
+                        description: Text(query)
+                    )
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 12) {
-                            ForEach(mailbox.turns) { turn in
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("\(turn.sender) → \(turn.recipient)")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.secondary)
-                                    Text(turn.text.isEmpty ? "（空）" : turn.text)
-                                        .font(.system(.body, design: .monospaced))
-                                        .frame(maxWidth: .infinity, alignment: .leading)
+                            ForEach(roundGroups, id: \.round) { group in
+                                RoundDivider(title: L10n.roundTitle(group.round, language.current))
+                                ForEach(group.turns) { turn in
+                                    turnCard(turn)
                                 }
-                                .padding(12)
-                                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                            }
+                            if showReportPlaceholder || !reportTurns.isEmpty {
+                                RoundDivider(title: language.text(.reportsHeader))
+                                if reportTurns.isEmpty {
+                                    Text(language.text(.reportsWaiting))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                ForEach(reportTurns) { turn in
+                                    turnCard(turn)
+                                }
                             }
                         }
                         .padding(16)
                     }
                 }
             }
-            .navigationTitle("两人对话")
+            .searchable(text: $query, prompt: Text(language.text(.searchPlaceholder)))
+            .navigationTitle(language.text(.conversationTitle))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("关闭") { dismiss() }
+                    Button(language.text(.close)) { dismiss() }
                 }
             }
         }
+    }
+
+    private var keyword: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var visibleTurns: [DialogueTurn] {
+        mailbox.turns.filter {
+            ConversationSearch.matches(sender: $0.sender, recipient: $0.recipient, text: $0.text, query: keyword)
+        }
+    }
+
+    private var roundGroups: [(round: Int, turns: [DialogueTurn])] {
+        let messages = visibleTurns.filter { !$0.isReport }
+        let rounds = Array(Set(messages.map(\.round))).sorted()
+        return rounds.map { round in
+            (round, messages.filter { $0.round == round })
+        }
+    }
+
+    private var reportTurns: [DialogueTurn] {
+        visibleTurns.filter(\.isReport)
+    }
+
+    private var showReportPlaceholder: Bool {
+        keyword.isEmpty && mailbox.phase == .reporting && reportTurns.isEmpty
+    }
+
+    private func turnCard(_ turn: DialogueTurn) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("\(L10n.displayName(turn.sender, language.current)) → \(L10n.displayName(turn.recipient, language.current))")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            highlighted(turn.text.isEmpty ? language.text(.emptyBody) : turn.text)
+                .font(.system(.body, design: .monospaced))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.mailboxCard, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func highlighted(_ source: String) -> Text {
+        let needle = keyword
+        guard !needle.isEmpty else { return Text(source) }
+        var attributed = AttributedString(source)
+        var searchFrom = source.startIndex
+        while let range = source.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive], range: searchFrom..<source.endIndex) {
+            if let start = AttributedString.Index(range.lowerBound, within: attributed),
+               let end = AttributedString.Index(range.upperBound, within: attributed) {
+                attributed[start..<end].inlinePresentationIntent = .stronglyEmphasized
+                attributed[start..<end].backgroundColor = .yellow
+            }
+            searchFrom = range.upperBound
+            if searchFrom == source.endIndex { break }
+        }
+        return Text(attributed)
+    }
+}
+
+private struct RoundDivider: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            line
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .fixedSize()
+            line
+        }
+        .accessibilityAddTraits(.isHeader)
+        .padding(.top, 4)
+    }
+
+    private var line: some View {
+        Rectangle()
+            .fill(Color.secondary.opacity(0.45))
+            .frame(height: 1)
+    }
+}
+
+private extension Color {
+    static var mailboxBackground: Color {
+        #if os(macOS)
+        Color(nsColor: .windowBackgroundColor)
+        #else
+        Color(.systemGroupedBackground)
+        #endif
+    }
+    static var mailboxCard: Color {
+        #if os(macOS)
+        Color(nsColor: .controlBackgroundColor)
+        #else
+        Color(.secondarySystemGroupedBackground)
+        #endif
     }
 }
