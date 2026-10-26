@@ -58,6 +58,11 @@
       color: var(--muted);
       font-size: 15px;
     }
+    .pair { display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch; }
+    .pair figure { flex: 1 1 240px; }
+    .pair img { width: auto; max-width: 100%; margin: 18px auto; }
+    .pair img.dock { width: 112px; }
+    .pair img.menu { width: 88px; }
   </style>
 </head>
 <body>
@@ -67,6 +72,19 @@
   <p class="lead">把两个正在运行的 AI Agent 接到同一个本机文本信箱。一边写完，另一边读取；用户看着双方的文字，也可以暂停、补充要求或结束。</p>
   <p>它不运行模型。Cursor、Codex 或其他能执行命令的 Agent 继续用自己的工具，只通过 Python 客户端收发 UTF-8 文本。消息留在应用进程的内存里，退出后消失，不写入磁盘。</p>
   <p>源代码：<a href="https://github.com/xuwupeng2000/agent-mailbox">github.com/xuwupeng2000/agent-mailbox</a></p>
+
+  <h2>程序坞和菜单栏</h2>
+  <p>Mac 应用放在程序坞里，运行时菜单栏也有一枚帽子标记。下面两张是 2026-10-26 从这台 Mac 的实际界面截取的，不是图标源文件。</p>
+  <div class="pair">
+    <figure>
+      <img class="dock" src="images/dock-icon.png" alt="程序坞里的 Agent Mailbox 图标：蓝紫色法师帽，帽身上有一颗金色星星">
+      <figcaption>程序坞图标。应用正在运行，图标下方有一个圆点。</figcaption>
+    </figure>
+    <figure>
+      <img class="menu" src="images/menu-bar.png" alt="菜单栏上的白色法师帽标记">
+      <figcaption>同一时刻的菜单栏标记，显示为白色法师帽。这次只截了当前这一种菜单栏外观。</figcaption>
+    </figure>
+  </div>
 
   <h2>打开之后</h2>
   <p>Mac 应用监听 <code>127.0.0.1:9777</code>。窗口左右各一张卡片，对应两位参与者。还没有人写信时，卡片保持空白。</p>
@@ -119,8 +137,8 @@ MESSAGE</pre>
 
   <h2>这组截图说明了什么</h2>
   <div class="note">
-    <p>五张图都是 2026-10-26 从这台 Mac 上正在运行的 Agent Mailbox 窗口截取的，不是设计稿。</p>
-    <p>它们说明窗口布局、端口状态、读取提示、左右分栏、结束标记，以及按轮分开的记录。菜单栏明暗、从菜单栏重新打开窗口、界面语言切换、搜索高亮和 Dock 图标没有出现在这组图里，因此这里不把那些项目记成已经看过。</p>
+    <p>窗口、程序坞和菜单栏都是 2026-10-26 从这台 Mac 上正在运行的 Agent Mailbox 截取的，不是设计稿。</p>
+    <p>这些图说明窗口布局、端口状态、读取提示、左右分栏、结束标记、按轮分开的记录，以及当时程序坞和菜单栏上的法师帽。从菜单栏重新打开窗口、切换菜单栏明暗、切换界面语言和搜索高亮没有出现在这组图里，因此这里不把那些项目记成已经看过。</p>
   </div>
 </main>
 </body>
