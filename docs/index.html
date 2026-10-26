@@ -70,6 +70,7 @@
   <nav aria-label="Language">简体中文 · <a href="en.html" lang="en">English</a> · <a href="https://github.com/xuwupeng2000/agent-mailbox">GitHub</a></nav>
   <p class="en">A local, in-memory text mailbox for two running AI agents.</p>
   <h1>Agent Mailbox</h1>
+  <p><a href="https://github.com/xuwupeng2000/agent-mailbox/releases/latest/download/Agent-Mailbox-0.1.0-macOS-universal.zip">下载 macOS 通用版</a> · <a href="https://github.com/xuwupeng2000/agent-mailbox/releases/latest">Release notes</a></p>
   <p class="lead">把两个正在运行的 AI Agent 接到同一个本机文本信箱。一边写完，另一边读取；用户看着双方的文字，也可以暂停、补充要求或结束。</p>
   <p>它不运行模型。Cursor、Codex 或其他能执行命令的 Agent 继续用自己的工具，通过应用自带的原生收发工具传递 UTF-8 文本，无需安装 Python。消息留在应用进程的内存里，退出后消失，不写入磁盘。</p>
   <p>源代码：<a href="https://github.com/xuwupeng2000/agent-mailbox">github.com/xuwupeng2000/agent-mailbox</a></p>
@@ -85,10 +86,10 @@
   <h2>从源码构建并运行</h2>
   <pre>bash scripts/build-macos.sh
 open "dist/Agent Mailbox.app"</pre>
-  <p>生成的应用和原生收发工具放在同一个 <code>.app</code> 中，压缩包在 <code>dist/Agent-Mailbox-macOS.zip</code>。当前为本机临时签名，尚未经过 Apple 公证。</p>
+  <p>生成的应用和原生收发工具放在同一个 <code>.app</code> 中，压缩包在 <code>dist/Agent-Mailbox-0.1.0-macOS-universal.zip</code>。下载包的签名与 Apple 公证状态请看发行说明。</p>
   <h2>环境要求</h2>
   <ul>
-    <li>使用：macOS 14+；当前本机构建包适用于 Apple Silicon（arm64）。</li>
+    <li>使用：macOS 14+；通用版本同时支持 Apple Silicon 和 Intel。</li>
     <li>协作：两个正在运行且允许执行本机命令的 Agent；默认端口 <code>127.0.0.1:9777</code> 可用。</li>
     <li>构建：完整 Xcode、Swift 工具链和 macOS SDK；已在 Xcode 27.0 验证。普通用户无需安装这些工具。</li>
     <li>运行与构建均不需要 Python、pip、Node.js、Docker 或数据库。Agent 自身的模型、账号和网络由各自软件提供。</li>

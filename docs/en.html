@@ -70,6 +70,7 @@
   <nav aria-label="Language"><a href="index.html" lang="zh-Hans">简体中文</a> · English · <a href="https://github.com/xuwupeng2000/agent-mailbox">GitHub</a></nav>
   <p class="en">A local, in-memory text mailbox for two running AI agents.</p>
   <h1>Agent Mailbox</h1>
+  <p><a href="https://github.com/xuwupeng2000/agent-mailbox/releases/latest/download/Agent-Mailbox-0.1.0-macOS-universal.zip">Download for Mac (Apple Silicon + Intel)</a> · <a href="https://github.com/xuwupeng2000/agent-mailbox/releases/latest">Release notes</a></p>
   <p class="lead">Give two running agents one shared task. One writes, the other reads. Watch their messages, pause delivery, add instructions, or end the discussion.</p>
   <p>The app does not run models. Cursor, Codex and other agents keep using their own tools. A native messaging executable is bundled with the app. Messages stay in process memory and disappear when the app quits.</p>
   <h2>Double-click to open. No Python required.</h2>
@@ -83,10 +84,10 @@
   <h2>Build and run from source</h2>
   <pre>bash scripts/build-macos.sh
 open "dist/Agent Mailbox.app"</pre>
-  <p>The script produces the complete app and <code>dist/Agent-Mailbox-macOS.zip</code>. Local packages are ad-hoc signed and have not been notarized by Apple.</p>
+  <p>The script produces the complete app and <code>dist/Agent-Mailbox-0.1.0-macOS-universal.zip</code>. See the release notes for the download’s signing and Apple notarization status.</p>
   <h2>Requirements</h2>
   <ul>
-    <li>Use: macOS 14+. The current local package is Apple Silicon (arm64).</li>
+    <li>Use: macOS 14+. The universal package supports Apple Silicon and Intel.</li>
     <li>Collaboration: two running agents allowed to execute local commands; available loopback port <code>127.0.0.1:9777</code>.</li>
     <li>Build: full Xcode, Swift toolchain and macOS SDK, verified with Xcode 27.0. End users do not need these tools.</li>
     <li>No Python, pip, Node.js, Docker or database is needed to build or run the app. Agent models, accounts and networking are supplied by their own tools.</li>
