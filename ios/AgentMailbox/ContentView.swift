@@ -133,7 +133,7 @@ struct ContentView: View {
     private var conversationLabel: some View {
         ZStack(alignment: .topTrailing) {
             menuImage
-                .frame(width: 30, height: 24)
+                .frame(width: 28, height: 18)
             if mailbox.unread > 0 {
                 Text(mailbox.unread > 9 ? "9+" : "\(mailbox.unread)")
                     .font(.caption2.weight(.bold))
@@ -200,15 +200,19 @@ struct WizardHatMark: Shape {
         path.addCurve(to: CGPoint(x: 3, y: 85), control1: CGPoint(x: 96, y: 100), control2: CGPoint(x: 4, y: 100))
         path.addCurve(to: CGPoint(x: 24, y: 71), control1: CGPoint(x: 0, y: 79), control2: CGPoint(x: 13, y: 73))
         path.closeSubpath()
-        // Oversized, heavy J: readable as a template cutout at menu-bar scale.
-        path.move(to: CGPoint(x: 48, y: 38))
-        path.addLines([CGPoint(x: 70, y: 38), CGPoint(x: 70, y: 48), CGPoint(x: 67, y: 48), CGPoint(x: 67, y: 65)])
-        path.addCurve(to: CGPoint(x: 53, y: 83), control1: CGPoint(x: 67, y: 78), control2: CGPoint(x: 63, y: 83))
-        path.addCurve(to: CGPoint(x: 35, y: 65), control1: CGPoint(x: 42, y: 83), control2: CGPoint(x: 34, y: 77))
-        path.addLine(to: CGPoint(x: 47, y: 62))
-        path.addCurve(to: CGPoint(x: 53, y: 72), control1: CGPoint(x: 46, y: 69), control2: CGPoint(x: 48, y: 72))
-        path.addCurve(to: CGPoint(x: 56, y: 65), control1: CGPoint(x: 56, y: 72), control2: CGPoint(x: 56, y: 69))
-        path.addLines([CGPoint(x: 56, y: 48), CGPoint(x: 48, y: 48)])
+        // Tall, slender J with a clear inset from every edge of the crown.
+        path.move(to: CGPoint(x: 50, y: 35))
+        path.addLine(to: CGPoint(x: 63, y: 35))
+        path.addLine(to: CGPoint(x: 63, y: 39))
+        path.addLine(to: CGPoint(x: 60, y: 39))
+        path.addLine(to: CGPoint(x: 60, y: 68))
+        path.addCurve(to: CGPoint(x: 50, y: 79), control1: CGPoint(x: 60, y: 76), control2: CGPoint(x: 57, y: 79))
+        path.addCurve(to: CGPoint(x: 40, y: 69), control1: CGPoint(x: 43, y: 79), control2: CGPoint(x: 40, y: 75))
+        path.addLine(to: CGPoint(x: 45, y: 68))
+        path.addCurve(to: CGPoint(x: 50, y: 74), control1: CGPoint(x: 45, y: 72), control2: CGPoint(x: 47, y: 74))
+        path.addCurve(to: CGPoint(x: 55, y: 68), control1: CGPoint(x: 54, y: 74), control2: CGPoint(x: 55, y: 72))
+        path.addLine(to: CGPoint(x: 55, y: 39))
+        path.addLine(to: CGPoint(x: 50, y: 39))
         path.closeSubpath()
         let side = min(rect.width, rect.height)
         return path.applying(CGAffineTransform(scaleX: side / 100, y: side / 100)
